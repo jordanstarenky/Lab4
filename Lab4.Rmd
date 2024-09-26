@@ -6,19 +6,19 @@ output: "github_document"
 ---
 
 ```{r}
+
 library(car)
 library(dplyr)
 library(tidyr)
 library(ggplot2)
 library(psych)
-library(bruceR)
 
 ```
 
 # Load dataset
 ```{r}
 
-lab4data <- read.csv("C:/Users/Colin/Documents/GitHub/Website/Lab4/skewed.csv")
+lab4data <- read.csv("/Users/jostarenky/Documents/GitHub/Lab4/skewed.csv")
 
 
 ```
@@ -52,11 +52,17 @@ plot(density(lab4data$Performance, na.rm = TRUE, bw = 90),  lwd=2, main = "")
 ```{r}
 
 #a fun function to plot the violin plot by group, but it's not part of ggplot
-#violinBy(Performance ~ Group, data = lab4data, rain= TRUE, vertical = FALSE)
+violinBy(Performance ~ Group, data = lab4data, rain= TRUE, vertical = FALSE)
 
 
 #Find a way to plot the histograms, density, and qq plots by groups using ggplot
+ggplot(lab4data, aes(x = Performance)) + geom_histogram(binwidth = 20) + facet_wrap(~Group)+theme_classic()
 
+ggplot(lab4data, aes(x = Performance)) + geom_density(adjust = 2)  + facet_wrap(~Group)+theme_classic()
+
+qq<-ggplot(lab4data, aes(sample = Performance)) + geom_qq()  + facet_wrap(~Group)+theme_classic()
+
+qq+ geom_qq_line()
 
 #Use ggplot to create a violin plot by groups
 
@@ -71,6 +77,8 @@ describe(lab4data$Performance)
 
 shapiro.test(lab4data$Performance)
 
+#shapiro test: not normal bc p is significant
+#skew and kurtosis: normal
 
 
 ```
@@ -79,12 +87,12 @@ shapiro.test(lab4data$Performance)
 ```{r}
 
 #Use the describeBy() function to get skewness and kurtosis by group
-
+describeBy(Performance ~ Group, data = lab4data)
 
 #Use the group by function to get shapiro test results by group
 lab4data %>%
   group_by(Group) %>%
-  summarize(W = shapiro.test(Performance)$statistic)
+  summarize(W = shapiro.test(Performance)$statistic, p_value = shapiro.test(Performance)$p.value)
 
 #Use the filter function to get both
 
@@ -94,18 +102,21 @@ lab4data %>%
 
 ```
 # Q1: What is your overall conclusion about this variable's normality? Why?
-
+This variable is not normal because even though the skew and kurtosis values fit the normal ranges, the Shapiro test and visualizations indicate that the variable is not normal
 
 
 # Equal Variance between Groups
 ## Descrptive Variance
 ```{r}
+#get rid of missing values
+lab4data_clean<-drop_na(lab4data)
 
-var(lab4data$Performance)
+var(lab4data_clean$Performance)
 
-#lab4data %>%
-  #group_by(Group) %>%
-  #summarize(...)
+
+lab4data_clean %>%
+  group_by(Group) %>%
+  summarize(variance = var(Performance))
 
 
 ```
@@ -115,8 +126,8 @@ var(lab4data$Performance)
 
 
 leveneTest(Performance~Group, lab4data)
-
-MANOVA(lab4data, dv = "Performance", between = "Group")
+#cannot run MANOVA bc can't install bruce package
+#MANOVA(lab4data, dv = "Performance", between = "Group")
 
 #What if you want to test equal variance between 2 groups specifically? 
 
@@ -129,7 +140,7 @@ leveneTest(Performance~Group, lab4dataConG1)
 ```
 
 # Q2: Overall, does it meet the equal variance assumption across the groups? Why?
-
+No, because the result was significant
 # Transformation
 ```{r}
 
@@ -142,3 +153,54 @@ lab4data$Performance_log <- log10(lab4data$Performance)
 ```
 
 # Q3: Run the above tests again with the transformed outcome. Compare the differences in results. 
+Shapiro test is now not significant, indicating normality. Equal variance between groups is now true. Levene's test is not significant, so equal variance across groups
+
+```{r}
+#visualizations
+ggplot(lab4data, aes(x = Performance_log)) + geom_histogram(binwidth = 20) + theme_classic()
+
+ggplot(lab4data, aes(x = Performance_log)) + geom_density(adjust = 2)  + theme_classic()
+
+qq<-ggplot(lab4data, aes(sample = Performance_log)) + geom_qq()  + theme_classic()
+
+qq+ geom_qq_line()
+
+
+
+#Normality tests
+describe(lab4data$Performance_log)
+
+shapiro.test(lab4data$Performance_log)
+
+#Use the describeBy() function to get skewness and kurtosis by group
+describeBy(Performance_log ~ Group, data = lab4data)
+
+#Use the group by function to get shapiro test results by group
+lab4data %>%
+  group_by(Group) %>%
+  summarize(W = shapiro.test(Performance_log)$statistic, p_value = shapiro.test(Performance_log)$p.value)
+
+#Descriptive variance
+lab4data_clean<-drop_na(lab4data)
+
+var(lab4data_clean$Performance_log)
+
+
+lab4data_clean %>%
+  group_by(Group) %>%
+  summarize(variance = var(Performance_log))
+
+#Equal variance across groups
+leveneTest(Performance_log~Group, lab4data)
+#cannot run MANOVA bc can't install bruce package
+#MANOVA(lab4data, dv = "Performance", between = "Group")
+
+#What if you want to test equal variance between 2 groups specifically? 
+
+lab4dataConG1<-lab4data %>%
+  filter(Group == "Control" | Group == "G1")
+
+leveneTest(Performance_log~Group, lab4dataConG1)
+
+
+```
